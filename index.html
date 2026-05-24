@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SoSo Signal Copilot v2</title>
+  <meta name="description" content="SoSoValue-only AI Research OS for Wave 2" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="bg-layer l1"></div><div class="bg-layer l2"></div><div class="bg-grid"></div>
+  <aside class="side glass">
+    <div class="brand"><div class="bot">◉</div><div><small>SoSoValue Only</small><h1>Signal Copilot v2</h1></div></div>
+    <button class="nav active" data-tab="command">Command Center</button>
+    <button class="nav" data-tab="radar">Narrative Radar</button>
+    <button class="nav" data-tab="signals">Signal Engine</button>
+    <button class="nav" data-tab="ssi">SSI Builder</button>
+    <button class="nav" data-tab="portfolio">Portfolio Risk</button>
+    <button class="nav" data-tab="api">API Console</button>
+    <div class="side-links">
+      <a href="https://sosovalue.com/join/9RZ4FYNK" target="_blank">SoSoValue</a>
+      <a href="https://sodex.com/" target="_blank">SoDEX</a>
+      <a href="https://sodex.com/trade/spot/BTC_USDC" target="_blank">BTC/USDC</a>
+      <a href="https://ssi.sosovalue.com/vi/assets" target="_blank">SSI Assets</a>
+    </div>
+  </aside>
+
+  <main class="app">
+    <header class="hero glass">
+      <div><p class="eyebrow">AI × On-Chain Finance × SoSoValue API</p><h2>Research OS powered only by live SoSoValue data.</h2><p>No demo data. No external market API. If SoSoValue API fails, this tool shows the real error.</p><div class="actions"><button id="refresh" class="primary">Refresh Live API</button><button id="exportMd">Export Research Plan</button><button id="openApi">Inspect API</button></div></div>
+      <div class="status-orb"><div class="ring"></div><span id="liveScore">0/4</span><small>Live Modules</small></div>
+    </header>
+
+    <section class="cards four"><div class="stat"><small>Market</small><b id="marketCount">0</b></div><div class="stat"><small>ETF</small><b id="etfCount">0</b></div><div class="stat"><small>News</small><b id="newsCount">0</b></div><div class="stat"><small>SSI</small><b id="ssiCount">0</b></div></section>
+
+    <section id="command" class="tab show"><div class="panel glass"><div class="head"><div><p class="eyebrow">Command Center</p><h3>Daily Research Brief</h3></div><span id="apiBadge" class="badge bad">Checking</span></div><p id="brief" class="brief">Loading live SoSoValue API...</p><div id="topSignals" class="signal-grid"></div></div></section>
+
+    <section id="radar" class="tab"><div class="panel glass"><p class="eyebrow">Narrative Radar</p><h3>Heatmap from live SoSoValue records</h3><div id="radarList" class="radar"></div></div></section>
+
+    <section id="signals" class="tab"><div class="panel glass"><p class="eyebrow">Signal Engine</p><h3>Scored Research Cards</h3><div id="signalList" class="signal-grid"></div></div></section>
+
+    <section id="ssi" class="tab"><div class="panel glass"><p class="eyebrow">SSI Builder</p><h3>Allocation from live SSI records</h3><select id="profile"><option value="conservative">Conservative</option><option value="balanced" selected>Balanced</option><option value="aggressive">Aggressive</option><option value="hunter">Narrative Hunter</option></select><div id="allocation" class="alloc"></div></div></section>
+
+    <section id="portfolio" class="tab"><div class="panel glass"><p class="eyebrow">Portfolio Risk</p><h3>Manual holdings, SoSo-style research scoring</h3><textarea id="holdings" placeholder="BTC 40\nETH 25\nMAG7.ssi 25\nMEME.ssi 10"></textarea><button id="analyzePortfolio" class="primary">Analyze Risk</button><div id="riskBox" class="risk-box"></div></div></section>
+
+    <section id="api" class="tab"><div class="panel glass"><div class="head"><div><p class="eyebrow">API Console</p><h3>Real SoSoValue API status</h3></div><button id="explore">Explore Endpoints</button></div><p class="brief">Set SOSO_API_KEY in Vercel. For exact docs endpoints, set SOSO_MARKET_PATHS / SOSO_ETF_PATHS / SOSO_NEWS_PATHS / SOSO_SSI_PATHS.</p><input id="customPath" placeholder="/paste/real/soso/endpoint/path" /><button id="testPath">Test Custom Path</button><pre id="apiLog">Waiting...</pre></div></section>
+
+    <section class="data-grid"><div class="panel glass"><p class="eyebrow">Market Records</p><div id="marketRows" class="rows"></div></div><div class="panel glass"><p class="eyebrow">ETF Records</p><div id="etfRows" class="rows"></div></div><div class="panel glass"><p class="eyebrow">News Records</p><div id="newsRows" class="rows"></div></div><div class="panel glass"><p class="eyebrow">SSI Records</p><div id="ssiRows" class="rows"></div></div></section>
+  </main>
+<script src="/app.js" type="module"></script>
+</body>
+</html>

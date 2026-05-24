@@ -1,0 +1,11 @@
+{
+  "name": "soso-signal-copilot-v2",
+  "version": "2.0.0",
+  "private": true,
+  "description": "SoSoValue-only AI Research OS for Wave 2.",
+  "type": "module",
+  "scripts": {
+    "smoke": "node scripts/smoke-test.mjs"
+  },
+  "keywords": ["sosovalue", "sodex", "ssi", "ai", "crypto", "wave2"]
+}
