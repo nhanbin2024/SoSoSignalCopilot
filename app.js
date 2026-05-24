@@ -1,69 +1,27 @@
+const state = { data: null, sosoPayload: null, sodexPayload: null, ai: null };
 const $ = (id) => document.getElementById(id);
-const state = { data: null, ai: null, holdings: [] };
-
-function toast(msg){ console.log(msg); }
-function esc(v){return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function label(item){return item.symbol || item.ticker || item.name || item.asset || item.title || item.coin || item.currency || 'SoSo record';}
-function value(item){return item.price ?? item.change24h ?? item.change ?? item.netFlow ?? item.net_inflow ?? item.sentiment ?? item.status ?? item.date ?? '';}
-function fmt(v){ if(typeof v==='number'){ if(Math.abs(v)>=1e9)return `$${(v/1e9).toFixed(2)}B`; if(Math.abs(v)>=1e6)return `$${(v/1e6).toFixed(2)}M`; return String(Math.round(v*100)/100);} return String(v ?? '');}
-function live(block){return block?.source === 'sosovalue-api' && (block?.itemCount || 0) > 0;}
-
-function switchTab(id){ document.querySelectorAll('.tab').forEach(x=>x.classList.remove('show')); $(id).classList.add('show'); document.querySelectorAll('.nav').forEach(x=>x.classList.toggle('active', x.dataset.tab===id)); }
-document.querySelectorAll('.nav').forEach(btn=>btn.onclick=()=>switchTab(btn.dataset.tab));
-$('openApi').onclick=()=>switchTab('api');
-
-function rows(id, block){
-  const el=$(id); const items=block?.items || [];
-  el.innerHTML = items.slice(0,8).map(item=>`<div class="row"><div><b>${esc(label(item))}</b><small>${esc(JSON.stringify(item).slice(0,130))}</small></div><strong>${esc(fmt(value(item)))}</strong></div>`).join('') || `<div class="row"><div><b>No live records</b><small>${esc(block?.warning || 'Check API Console')}</small></div><strong>${esc(block?.status || '')}</strong></div>`;
-}
-
-function signalCard(s){
-  return `<article class="signal"><div class="score">${esc(s.score ?? 0)}</div><h4>${esc(s.title)}</h4><p><b>Confidence:</b> ${esc(s.confidence)}</p><ul>${(s.evidence||[]).map(e=>`<li>${esc(e)}</li>`).join('')}</ul><p><b>Invalidation:</b> ${esc(s.invalidation)}</p><p><b>Action:</b> ${esc(s.action)}</p></article>`;
-}
-
-function render(){
-  const d=state.data || {};
-  $('marketCount').textContent=d.market?.itemCount || 0; $('etfCount').textContent=d.etf?.itemCount || 0; $('newsCount').textContent=d.news?.itemCount || 0; $('ssiCount').textContent=d.ssi?.itemCount || 0;
-  const count=['market','etf','news','ssi'].filter(k=>live(d[k])).length;
-  $('liveScore').textContent=`${count}/4`;
-  $('apiBadge').textContent=count ? 'Live SoSo API' : 'API Error'; $('apiBadge').className=`badge ${count?'good':'bad'}`;
-  $('brief').textContent=state.ai?.brief || (count ? 'Live data loaded.' : 'No live SoSoValue records. Open API Console to inspect exact errors.');
-  rows('marketRows',d.market); rows('etfRows',d.etf); rows('newsRows',d.news); rows('ssiRows',d.ssi);
-  const signals=state.ai?.signals || [];
-  $('topSignals').innerHTML=signals.slice(0,3).map(signalCard).join('') || '<p class="brief">No signals until live SoSoValue records are loaded.</p>';
-  $('signalList').innerHTML=signals.map(signalCard).join('') || '<p class="brief">No signals until live SoSoValue records are loaded.</p>';
-  $('radarList').innerHTML=(state.ai?.radar || []).map(r=>`<div class="radar-row"><b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.max(0,Math.min(100,r.heat))}%"></i></div><span>${esc(r.heat)}/100</span></div>`).join('') || '<p class="brief">No radar until live data loads.</p>';
-  const a=state.ai?.allocation;
-  $('allocation').innerHTML=a?.allocations?.length ? a.allocations.map(x=>`<div class="alloc-row"><b>${esc(x.name)}</b><div class="bar"><i style="width:${x.weight}%"></i></div><span>${x.weight}%</span></div>`).join('') + `<p class="brief">${esc(a.note)}</p>` : `<p class="brief">${esc(a?.note || 'No live SSI allocation yet.')}</p>`;
-  const pr=state.ai?.portfolioRisk;
-  $('riskBox').innerHTML=pr ? `<div class="brief"><h3>Risk Score: ${esc(pr.score)}/100</h3><p>Concentration: ${esc(pr.concentration)}</p><p>SSI Exposure: ${esc(pr.ssiExposure)}%</p><p>${esc(pr.suggestion)}</p></div>` : '';
-}
-
-function parseHoldings(){
-  return $('holdings').value.split('\n').map(line=>line.trim()).filter(Boolean).map(line=>{const parts=line.split(/\s+/); const weight=Number(parts.pop().replace('%','')); return {asset:parts.join(' '), weight:Number.isFinite(weight)?weight:0};});
-}
-
-async function analyze(){
-  const res=await fetch('/api/ai',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:state.data, holdings:parseHoldings(), profile:$('profile').value})});
-  state.ai=await res.json(); render();
-}
-
-async function refresh(){
-  $('apiBadge').textContent='Loading';
-  const res=await fetch('/api/soso?resource=all',{cache:'no-store'});
-  const json=await res.json();
-  state.data={market:json.market,etf:json.etf,news:json.news,ssi:json.ssi};
-  $('apiLog').textContent=JSON.stringify(json,null,2);
-  await analyze();
-}
-
-$('refresh').onclick=refresh;
-$('profile').onchange=analyze;
-$('analyzePortfolio').onclick=analyze;
-$('explore').onclick=async()=>{const r=await fetch('/api/soso?resource=explore',{cache:'no-store'}); $('apiLog').textContent=JSON.stringify(await r.json(),null,2); switchTab('api');};
-$('testPath').onclick=async()=>{const p=$('customPath').value.trim(); if(!p)return; const r=await fetch('/api/soso?path='+encodeURIComponent(p),{cache:'no-store'}); $('apiLog').textContent=JSON.stringify(await r.json(),null,2);};
-$('exportMd').onclick=()=>{
-  const md=[`# SoSo Signal Copilot v2 Research Plan`, '', `Generated: ${new Date().toISOString()}`, '', `## Brief`, state.ai?.brief || '', '', `## Signals`, ...(state.ai?.signals||[]).flatMap(s=>[`### ${s.title}`,`Score: ${s.score}/100`, `Confidence: ${s.confidence}`, ...(s.evidence||[]).map(e=>`- ${e}`), `Invalidation: ${s.invalidation}`, `Action: ${s.action}`, '']), '', 'Disclaimer: research only, not financial advice.'].join('\n');
-  const blob=new Blob([md],{type:'text/markdown'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='soso-signal-plan.md'; a.click(); URL.revokeObjectURL(a.href);
-};
+function toast(msg){ const el=$("toast"); el.textContent=msg; el.classList.add("show"); setTimeout(()=>el.classList.remove("show"),2600); }
+function esc(v){ return String(v ?? "").replace(/[&<>'"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;" }[c])); }
+function label(x){ return x.symbol || x.ticker || x.name || x.asset || x.title || x.coin || x.currency || x.symbolName || x.pair || "Live record"; }
+function value(x){ return x.lastPrice ?? x.price ?? x.close ?? x.markPrice ?? x.indexPrice ?? x.change24h ?? x.change ?? x.priceChangePercent ?? x.percentChange ?? x.netFlow ?? x.net_inflow ?? x.flow ?? x.sentiment ?? x.status ?? x.date ?? ""; }
+function fmt(v){ if(v===undefined||v===null||v==="") return ""; const n=typeof v==="number"?v:Number(String(v).replace(/[$,%+,]/g,"")); if(Number.isFinite(n)){ if(Math.abs(n)>=1e9)return `$${(n/1e9).toFixed(2)}B`; if(Math.abs(n)>=1e6)return `$${(n/1e6).toFixed(2)}M`; return String(Math.round(n*10000)/10000);} return String(v); }
+function live(block){ return ["sosovalue-api","sodex-api"].includes(block?.source) && (block?.itemCount || 0) > 0; }
+function setBadge(id,text,kind){ const el=$(id); el.textContent=text; el.className=`badge ${kind}`; }
+function switchTab(id){ document.querySelectorAll(".tab").forEach(t=>t.classList.remove("show")); $(id).classList.add("show"); document.querySelectorAll(".nav").forEach(b=>b.classList.toggle("active", b.dataset.tab===id)); }
+document.querySelectorAll(".nav").forEach(b=>b.addEventListener("click",()=>switchTab(b.dataset.tab)));
+$("openApi").addEventListener("click",()=>switchTab("api"));
+function rows(id, block, max=8){ const el=$(id), items=block?.items||[]; if(!items.length){ el.innerHTML=`<div class="row"><div><b>No live records</b><small>${esc(block?.warning || "Open API Console to inspect endpoint/key status.")}</small></div><strong>${esc(block?.status || block?.source || "")}</strong></div>`; return; } el.innerHTML=items.slice(0,max).map(item=>`<div class="row"><div><b>${esc(label(item))}</b><small>${esc(JSON.stringify(item).slice(0,190))}</small></div><strong>${esc(fmt(value(item)))}</strong></div>`).join(""); }
+function signalCard(s){ return `<article class="signal"><div class="score">${esc(s.score ?? 0)}</div><h4>${esc(s.title || "Signal")}</h4><p><b>Source:</b> ${esc(s.source || "Live engine")}</p><p><b>Confidence:</b> ${esc(s.confidence || "n/a")}</p><ul>${(s.evidence||[]).map(e=>`<li>${esc(e)}</li>`).join("")}</ul><p><b>Invalidation:</b> ${esc(s.invalidation || "n/a")}</p><p><b>Action:</b> ${esc(s.action || "n/a")}</p></article>`; }
+function renderDiagnostics(){ const soso=state.sosoPayload, sodex=state.sodexPayload; $("diagnostics").innerHTML=`<div class="row"><div><b>SoSoValue</b><small>${esc(soso?.keyFingerprint ? `Key: ${soso.keyFingerprint}` : "No key fingerprint")} · ${esc(soso?.baseUrl || "")}</small></div><strong>${esc(soso?.liveBlocks || 0)}/4</strong></div><div class="row"><div><b>SoDEX</b><small>${esc((sodex?.bases?.spot || []).join(" | ").slice(0,170))}</small></div><strong>${esc(sodex?.data?.liveBlocks || 0)}/6</strong></div>`; }
+function render(){ const d=state.data||{}; $("sosoMarketCount").textContent=d.sosoMarket?.itemCount||0; $("sodexMarketCount").textContent=d.sodexMarket?.itemCount||0; $("etfCount").textContent=d.etf?.itemCount||0; $("newsCount").textContent=d.news?.itemCount||0; $("ssiCount").textContent=d.ssi?.itemCount||0; const count=["sosoMarket","sodexMarket","etf","news","ssi"].filter(k=>live(d[k])).length; $("liveScore").textContent=`${count}/5`; const sosoLive=live(d.sosoMarket)||live(d.etf)||live(d.news)||live(d.ssi); setBadge("sosoBadge", sosoLive ? "SoSo Live" : "SoSo Error", sosoLive ? "good" : "bad"); setBadge("sodexBadge", live(d.sodexMarket) ? "SoDEX Live" : "SoDEX Error", live(d.sodexMarket) ? "good" : "bad"); setBadge("apiBadge", count ? `${count}/5 Live` : "API Error", count ? "good" : "bad"); $("brief").textContent=state.ai?.brief || (count ? "Live records loaded." : "No live records. Open API Console."); rows("sosoMarketRows", d.sosoMarket); rows("sodexRows", d.sodexMarket, 12); rows("etfRows", d.etf); rows("newsRows", d.news); rows("ssiRows", d.ssi); renderDiagnostics(); const sig=state.ai?.signals||[]; const empty=`<p class="brief">No signals until live records are loaded.</p>`; $("topSignals").innerHTML=sig.slice(0,3).map(signalCard).join("") || empty; $("signalList").innerHTML=sig.map(signalCard).join("") || empty; const radar=state.ai?.radar||[]; $("radarList").innerHTML=radar.length ? radar.map(r=>`<div class="radar-row"><b>${esc(r.name)}</b><div class="bar"><i style="width:${Math.max(0,Math.min(100,r.heat))}%"></i></div><span>${esc(r.heat)}/100</span></div>`).join("") : `<p class="brief">No narrative radar until live data loads.</p>`; const a=state.ai?.allocation; $("allocation").innerHTML=a?.allocations?.length ? a.allocations.map(x=>`<div class="allocation-row"><b>${esc(x.name)}</b><div class="bar"><i style="width:${Math.max(0,Math.min(100,x.weight))}%"></i></div><span>${esc(x.weight)}%</span></div>`).join("") + `<p class="brief">${esc(a.note)}</p>` : `<p class="brief">${esc(a?.note || "No live SSI allocation yet.")}</p>`; const risk=state.ai?.portfolioRisk; $("riskBox").innerHTML=risk ? `<div class="risk-card"><h3>Risk Score: ${esc(risk.score)}/100</h3><p>Concentration: ${esc(risk.concentration)}</p><p>SSI Exposure: ${esc(risk.ssiExposure)}%</p><p>${esc(risk.suggestion)}</p></div>` : ""; }
+function parseHoldings(){ return $("holdings").value.split("\n").map(x=>x.trim()).filter(Boolean).map(line=>{ const parts=line.split(/\s+/); const w=Number((parts.pop()||"0").replace("%","")); return { asset: parts.join(" "), weight: Number.isFinite(w) ? w : 0 }; }); }
+function combine(soso, sodex){ const sd=sodex?.data||{}; return { sosoMarket: soso?.market || null, sodexMarket: { source: sd.source || "sodex-api-error", resource:"sodexMarket", updatedAt:sd.updatedAt, itemCount:sd.itemCount||0, items:sd.items||[], warning:sd.warning||"", status:sd.status||"" }, etf: soso?.etf || null, news: soso?.news || null, ssi: soso?.ssi || null }; }
+async function analyze(){ const res=await fetch("/api/ai",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({data:state.data,holdings:parseHoldings(),profile:$("profile").value})}); state.ai=await res.json(); render(); }
+async function refresh(){ setBadge("apiBadge","Loading","wait"); setBadge("sosoBadge","SoSo loading","wait"); setBadge("sodexBadge","SoDEX loading","wait"); try{ const [sosoRes,sodexRes]=await Promise.all([fetch("/api/soso?resource=all",{cache:"no-store"}),fetch("/api/sodex?resource=all",{cache:"no-store"})]); state.sosoPayload=await sosoRes.json(); state.sodexPayload=await sodexRes.json(); state.data=combine(state.sosoPayload,state.sodexPayload); $("apiLog").textContent=JSON.stringify({soso:state.sosoPayload,sodex:state.sodexPayload},null,2); await analyze(); const count=["sosoMarket","sodexMarket","etf","news","ssi"].filter(k=>live(state.data[k])).length; toast(count ? `Loaded ${count}/5 live modules` : "No live modules. Check API Console."); }catch(e){ setBadge("apiBadge","API Error","bad"); $("apiLog").textContent=e.message; toast(e.message); } }
+$("refresh").addEventListener("click",refresh); $("profile").addEventListener("change",analyze); $("analyzePortfolio").addEventListener("click",analyze);
+$("exploreSoso").addEventListener("click",async()=>{ const r=await fetch("/api/soso?resource=explore",{cache:"no-store"}); $("apiLog").textContent=JSON.stringify(await r.json(),null,2); switchTab("api"); });
+$("exploreSodex").addEventListener("click",async()=>{ const r=await fetch("/api/sodex?resource=all",{cache:"no-store"}); $("apiLog").textContent=JSON.stringify(await r.json(),null,2); switchTab("api"); });
+$("testSosoPath").addEventListener("click",async()=>{ const p=$("sosoPath").value.trim(); if(!p)return; const r=await fetch(`/api/soso?path=${encodeURIComponent(p)}`,{cache:"no-store"}); $("apiLog").textContent=JSON.stringify(await r.json(),null,2); });
+$("testSodexPath").addEventListener("click",async()=>{ const p=$("sodexPath").value.trim(); if(!p)return; const m=$("sodexMarket").value; const r=await fetch(`/api/sodex?market=${encodeURIComponent(m)}&path=${encodeURIComponent(p)}`,{cache:"no-store"}); $("apiLog").textContent=JSON.stringify(await r.json(),null,2); });
+$("exportMd").addEventListener("click",()=>{ const lines=["# SoSo Signal Copilot Research Plan","",`Generated: ${new Date().toISOString()}`,"","## Brief",state.ai?.brief||"No brief.","","## Signals",...(state.ai?.signals||[]).flatMap(s=>["",`### ${s.title}`,`Score: ${s.score}/100`,`Confidence: ${s.confidence}`,...(s.evidence||[]).map(e=>`- ${e}`),`Invalidation: ${s.invalidation}`,`Action: ${s.action}`]),"","## API Status",$("apiLog").textContent.slice(0,3000),"","Disclaimer: research only, not financial advice."]; const blob=new Blob([lines.join("\n")],{type:"text/markdown"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="soso-signal-copilot-research-plan.md"; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); toast("Research plan exported"); });
 refresh();

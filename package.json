@@ -1,11 +1,11 @@
 {
-  "name": "soso-signal-copilot-v2",
-  "version": "2.0.0",
+  "name": "soso-signal-copilot-full",
+  "version": "3.0.0",
   "private": true,
-  "description": "SoSoValue-only AI Research OS for Wave 2.",
+  "description": "SoSoValue + SoDEX live research terminal. No demo data.",
   "type": "module",
   "scripts": {
     "smoke": "node scripts/smoke-test.mjs"
   },
-  "keywords": ["sosovalue", "sodex", "ssi", "ai", "crypto", "wave2"]
+  "keywords": ["sosovalue", "sodex", "ssi", "ai", "crypto", "wave2", "vercel"]
 }
