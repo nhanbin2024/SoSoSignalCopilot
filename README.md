@@ -1,4 +1,4 @@
-# SoSo Signal Copilot FULL
+# SoSo Signal Copilot
 
 A live AI x On-Chain Finance research terminal for Wave 2.
 
